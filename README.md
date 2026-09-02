@@ -67,7 +67,8 @@ Every public commit is independently checked on GitHub Actions. The required
 above, audits production dependencies, and validates the Compose configuration.
 The required `Fresh migration smoke` job also applies both migrations to an
 empty PostgreSQL database and verifies the expected schema and seed data. A
-failed required check blocks the next generated update from advancing `main`.
+failed required check blocks the next generated update: the publisher verifies
+both checks on the current public commit before creating its successor.
 
 The runtime uses only Node's HTTP server and `pg`; it has no dependency on another source tree. See [SUPPORT.md](SUPPORT.md) before filing an issue and [SECURITY.md](SECURITY.md) for private vulnerability reporting.
 
