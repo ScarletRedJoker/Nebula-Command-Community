@@ -1,0 +1,5 @@
+node_modules/
+dist/
+.env
+diagnostics-*.json.gz
+npm-debug.log*

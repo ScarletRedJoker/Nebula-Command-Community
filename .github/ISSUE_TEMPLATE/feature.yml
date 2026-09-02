@@ -1,0 +1,26 @@
+name: Community feature request
+description: Suggest a focused improvement inside the Community Edition boundary
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What local Community workflow is difficult today?
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+      description: Describe behavior rather than a private or commercial implementation.
+    validations:
+      required: true
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Boundary
+      options:
+        - label: This request is for a noncommercial, single-machine Community use case.
+          required: true

@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Local-first chat, image generation, and service health for Nebula Command Community Edition.">
+  <meta property="og:title" content="Nebula Command Community">
+  <meta property="og:description" content="A compact, local-first AI control surface.">
+  <title>Nebula Command Community</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header><div><span class="eyebrow">COMMUNITY EDITION · 0.1.0</span><h1>Nebula Command</h1></div><div id="overall" class="badge">Checking systems…</div></header>
+  <nav aria-label="Primary">
+    <button data-page="status" class="active">Status</button><button data-page="chat">Chat</button><button data-page="images">Images</button><button data-page="settings">Settings</button>
+  </nav>
+  <main>
+    <section id="status" class="page active">
+      <div class="heading"><div><p class="kicker">SYSTEM OVERVIEW</p><h2>Local stack</h2></div><button id="refresh-status">Refresh</button></div>
+      <div id="services" class="grid"></div>
+      <article><h3>Diagnostics</h3><p>Download a gzip bundle containing runtime and health metadata. Secrets, prompts, user content, headers, logs, and private addresses are excluded or redacted.</p><button id="download-diagnostics">Download redacted bundle</button></article>
+    </section>
+    <section id="chat" class="page">
+      <div class="heading"><div><p class="kicker">LOCAL INFERENCE</p><h2>Chat</h2></div><button id="clear-chat" class="quiet">Clear history</button></div>
+      <div id="messages" class="messages"><p class="empty">Send a message to begin. History stays in this browser and your local database.</p></div>
+      <form id="chat-form"><label for="message">Message</label><textarea id="message" maxlength="12000" required placeholder="Ask your local model…"></textarea><button type="submit">Send message</button></form>
+    </section>
+    <section id="images" class="page">
+      <p class="kicker">COMFYUI</p><h2>Generate image</h2>
+      <article><form id="image-form"><label for="prompt">Prompt</label><textarea id="prompt" maxlength="4000" required placeholder="Describe an image…"></textarea><label for="seed">Seed</label><input id="seed" type="number" min="1" value="1"><button type="submit">Queue generation</button></form><div id="image-result" class="notice">Jobs are queued in ComfyUI. Open ComfyUI to inspect output.</div></article>
+    </section>
+    <section id="settings" class="page">
+      <p class="kicker">LOCAL CONFIGURATION</p><h2>Settings</h2>
+      <article><form id="settings-form">
+        <label for="provider">Chat API</label><select id="provider"><option value="ollama">Ollama</option><option value="openai">OpenAI-compatible</option></select>
+        <label for="model">Model</label><input id="model" placeholder="llama3.2">
+        <label for="api-key">API key (session only)</label><input id="api-key" type="password" autocomplete="off" placeholder="Optional">
+        <button type="submit">Save local settings</button>
+      </form><p class="fine">Provider and model settings use browser local storage. The API key uses session storage and is sent only to this app for forwarding to the server-configured chat endpoint. Configure OLLAMA_URL, OPENAI_COMPATIBLE_URL, and COMFYUI_URL in the server environment.</p></article>
+    </section>
+  </main>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>
