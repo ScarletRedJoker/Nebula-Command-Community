@@ -62,6 +62,12 @@ pnpm typecheck
 pnpm build
 ```
 
+Every public commit is independently checked on GitHub Actions. The required
+`Build, test, and audit` job installs from the frozen lockfile, runs the commands
+above, audits production dependencies, and validates the Compose configuration.
+The required `Fresh migration smoke` job also applies both migrations to an
+empty PostgreSQL database and verifies the expected schema and seed data.
+
 The runtime uses only Node's HTTP server and `pg`; it has no dependency on another source tree. See [SUPPORT.md](SUPPORT.md) before filing an issue and [SECURITY.md](SECURITY.md) for private vulnerability reporting.
 
 ## License
