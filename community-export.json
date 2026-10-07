@@ -3,8 +3,8 @@
   "exporter": "nebula-community-export",
   "communityVersion": "0.1.0",
   "exportTimestamp": "1970-01-01T00:00:00.000Z",
-  "sourceFingerprint": "757aefeab9d04e440a61a5bafb4739e3345f4535e88e86dda0b2e859b540f051",
-  "treeChecksum": "2ce6a60b7f13a51a92757a350949325bad7b71ed3eb58064f20e07805f84633d",
+  "sourceFingerprint": "2cae4ed16ce7da63c1077e7401a269adbe8a3ff6beabb44c005098246b156c52",
+  "treeChecksum": "e76c2888c9878859c8009b40d00bff90f7af854f59e4feee9a2258924eecec06",
   "files": [
     {
       "path": ".dockerignore",
@@ -14,9 +14,16 @@
       "feature": "community-application"
     },
     {
+      "path": ".env.community.example",
+      "sha256": "f5015a9945c0a41a2c85c3305006c1e29017ac3886f37f90db4d1dc5c55a8896",
+      "bytes": 352,
+      "mode": "644",
+      "feature": "community-application"
+    },
+    {
       "path": ".env.example",
-      "sha256": "9c1ef34442c5ef987d36e7517fbcc71bdb1e3cf9f7c7df6e950b14d090a760ba",
-      "bytes": 411,
+      "sha256": "9322f5ada8508ce6de2fded31f02568955cf2d8e6b50e2af150837b5b9364dbc",
+      "bytes": 849,
       "mode": "644",
       "feature": "community-application"
     },
@@ -91,9 +98,16 @@
       "feature": "community-application"
     },
     {
+      "path": "migrations/003_command.sql",
+      "sha256": "b20b5a9493fb5fc5257138b27fec296b92fef61b60b87db83708152d53c61f9a",
+      "bytes": 3953,
+      "mode": "644",
+      "feature": "community-application"
+    },
+    {
       "path": "package.json",
-      "sha256": "d00b35defa2de16f37b8482226fb19de1f7bfd3b7ea9ae48c214113343711501",
-      "bytes": 562,
+      "sha256": "7bb5a35f1ae13da5c34d7f665b6d35a3e805a663d6f98cddc877869db1e6dd4a",
+      "bytes": 728,
       "mode": "644",
       "feature": "community-application"
     },
@@ -119,6 +133,27 @@
       "feature": "community-application"
     },
     {
+      "path": "public/command/app.js",
+      "sha256": "9521d0e7a7a1385b02f063ce7e2eb5f6e916ca293af505b215415c4518122f7f",
+      "bytes": 20613,
+      "mode": "644",
+      "feature": "community-application"
+    },
+    {
+      "path": "public/command/index.html",
+      "sha256": "f5ba7c91c2816db7660ea49adbac0fbb995437a6defa86e029b260341b27b369",
+      "bytes": 9901,
+      "mode": "644",
+      "feature": "community-application"
+    },
+    {
+      "path": "public/command/styles.css",
+      "sha256": "a76ff1554ab47024b12f2a4dfa7fc508121c74faf0d61f4cd4a8823f82073feb",
+      "bytes": 11376,
+      "mode": "644",
+      "feature": "community-application"
+    },
+    {
       "path": "public/index.html",
       "sha256": "bd8bdaa84feb9d1b2454de900385163d02adf2cae744b03bf83a785e6b462130",
       "bytes": 3584,
@@ -134,8 +169,8 @@
     },
     {
       "path": "README.md",
-      "sha256": "f42593ca769998e7cc14a3f4d8c537c00a406c4959d625d9d19aa227bbf3e82f",
-      "bytes": 3515,
+      "sha256": "c1523f51f964b1d6bc505272c464c6ac780f8510b4303276da628eacfed150d5",
+      "bytes": 5641,
       "mode": "644",
       "feature": "community-application"
     },
@@ -154,9 +189,23 @@
       "feature": "community-application"
     },
     {
+      "path": "scripts/smoke-command.mjs",
+      "sha256": "e8a07f2faace7151d48cbf3287afcbdfa6ab31eb375c66d7cd338966b196a31e",
+      "bytes": 2970,
+      "mode": "644",
+      "feature": "community-application"
+    },
+    {
       "path": "SECURITY.md",
       "sha256": "2faba24e01d923531e0eb3b5dde55f5b8921ef995febd928044387b186476a10",
       "bytes": 817,
+      "mode": "644",
+      "feature": "community-application"
+    },
+    {
+      "path": "src/command.mjs",
+      "sha256": "1f3c2c6e0700db3142e3f0f6d1c370155960c35d8378754df387505dbdb4dae5",
+      "bytes": 58483,
       "mode": "644",
       "feature": "community-application"
     },
@@ -169,8 +218,8 @@
     },
     {
       "path": "src/server.mjs",
-      "sha256": "e06268c14145fce7e209e8a5d4fd424295f7743743e7835f12bd26b95065e12a",
-      "bytes": 12937,
+      "sha256": "ee895de0605815d457fb3fffb362b1b03a9ba5020796db52e1d55860e50e9d97",
+      "bytes": 21998,
       "mode": "644",
       "feature": "community-application"
     },
@@ -178,6 +227,13 @@
       "path": "SUPPORT.md",
       "sha256": "e28c3727b4c761c509f60eb6c1b67037100363303d9fbbace355a6309f1176db",
       "bytes": 978,
+      "mode": "644",
+      "feature": "community-application"
+    },
+    {
+      "path": "test/command.test.mjs",
+      "sha256": "a5f74db74e402ce505cbc3e8c9f2e1e5d2e6bb7eeeb3ec3d85654ed2cfde27fd",
+      "bytes": 31892,
       "mode": "644",
       "feature": "community-application"
     },
@@ -190,8 +246,8 @@
     },
     {
       "path": "test/server.test.mjs",
-      "sha256": "b906e758eda67691438f58a29bc536621c6a887d4f63719c9261adf49ee1ddba",
-      "bytes": 5889,
+      "sha256": "55e6c7de2af1c1ff4af78ca6c5a74aa43049cb514510ad2a6652108ad9c2cb50",
+      "bytes": 13344,
       "mode": "644",
       "feature": "community-application"
     }

@@ -9,7 +9,8 @@
     "start": "node src/server.mjs",
     "dev": "node --watch src/server.mjs",
     "test": "node --test",
-    "typecheck": "node --check src/server.mjs && node --check src/core.mjs && node --check public/app.js",
+    "typecheck": "node --check src/server.mjs && node --check src/core.mjs && node --check src/command.mjs && node --check public/app.js && node --check public/command/app.js && node --check scripts/smoke-command.mjs",
+    "smoke:mocked": "node scripts/smoke-command.mjs",
     "build": "pnpm typecheck && node scripts/build.mjs",
     "diagnostics": "node scripts/diagnostics.mjs"
   },

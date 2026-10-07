@@ -6,13 +6,31 @@ import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
 import pg from "pg";
 import { diagnosticArchive, imageWorkflow, jsonError, redact, safeEndpoint } from "./core.mjs";
+import { createCommandService } from "./command.mjs";
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const PORT = Number(process.env.PORT || 3000);
 const HOST = process.env.HOST || "127.0.0.1";
 const TIMEOUT = Number(process.env.REQUEST_TIMEOUT_MS || 30000);
+const COMMAND_PAGE_ROUTES = new Set([
+  "/command",
+  "/command/",
+  "/command/overview",
+  "/command/jarvis",
+  "/command/studio",
+  "/command/knowledge",
+  "/command/research",
+  "/command/images",
+  "/command/jobs",
+  "/command/settings"
+]);
 const pool = process.env.DATABASE_URL ? new pg.Pool({ connectionString: process.env.DATABASE_URL, max: 4 }) : null;
 const startedAt = new Date().toISOString();
+const command = createCommandService({ pool, root: ROOT, timeoutMs: TIMEOUT, logError });
+
+function nebulaEdition() {
+  return process.env.NEBULA_EDITION === "command" ? "command" : "community";
+}
 
 function configuredHosts() {
   return [process.env.OLLAMA_URL, process.env.OPENAI_COMPATIBLE_URL, process.env.COMFYUI_URL]
@@ -78,26 +96,69 @@ async function redisStatus() {
   }
 }
 
-async function endpointStatus(raw, fallback) {
+async function endpointStatus(raw, fallback, path = "") {
   if (!raw && !fallback) return { state: "disabled", detail: "Not configured" };
   try {
     const url = safeEndpoint(raw, fallback);
+    if (path) {
+      const [pathname, query = ""] = path.split("?");
+      url.pathname = pathname;
+      url.search = query ? `?${query}` : "";
+    }
     const response = await fetch(url, { method: "GET", redirect: "error", signal: AbortSignal.timeout(1500) });
-    return { state: response.status < 500 ? "online" : "degraded", detail: response.status < 500 ? "Endpoint responded" : "Endpoint returned a server error" };
+    return { state: response.ok ? "online" : "degraded", detail: response.ok ? "Endpoint responded" : `Endpoint returned HTTP ${response.status}` };
   } catch (error) {
     logError("inference_health", error);
     return { state: "offline", detail: "Configured endpoint is unavailable" };
   }
 }
 
+async function ollamaModelStatus(model) {
+  if (!model) return { state: "disabled", detail: "EMBED_MODEL is not configured" };
+  if (!process.env.OLLAMA_URL) return { state: "disabled", detail: "OLLAMA_URL is not configured" };
+  try {
+    const url = safeEndpoint("", process.env.OLLAMA_URL);
+    url.pathname = "/api/tags";
+    url.search = "";
+    const response = await fetch(url, { method: "GET", redirect: "error", signal: AbortSignal.timeout(1500) });
+    if (!response.ok) return { state: "degraded", detail: `Ollama model list returned HTTP ${response.status}` };
+    const payload = await response.json();
+    const expected = String(model).replace(/:latest$/, "");
+    const installed = Array.isArray(payload.models) && payload.models.some((entry) => {
+      const name = String(entry?.name || entry?.model || "").replace(/:latest$/, "");
+      return name === expected;
+    });
+    return installed
+      ? { state: "online", detail: `${model} is installed` }
+      : { state: "degraded", detail: `${model} is not installed` };
+  } catch (error) {
+    logError("embedding_health", error);
+    return { state: "offline", detail: "Configured embedding service is unavailable" };
+  }
+}
+
 async function status() {
+  const edition = nebulaEdition();
   const [database, redis, chat, images] = await Promise.all([
     dbStatus(), redisStatus(),
     endpointStatus(process.env.OLLAMA_URL || process.env.OPENAI_COMPATIBLE_URL),
     endpointStatus(process.env.COMFYUI_URL)
   ]);
   const services = { database, redis, chat, images };
-  return { version: "0.1.0", edition: "community", startedAt, state: Object.values(services).some((s) => s.state !== "online") ? "degraded" : "healthy", services };
+  if (edition === "command") {
+    const [jarvis, search, embed, gpu] = await Promise.all([
+      endpointStatus(process.env.OLLAMA_URL, "", "/api/tags"),
+      endpointStatus(process.env.SEARXNG_URL, "", "/search?q=nebula-health&format=json"),
+      ollamaModelStatus(process.env.EMBED_MODEL),
+      endpointStatus(process.env.GPU_STATUS_URL)
+    ]);
+    Object.assign(services, { jarvis, search, embed, gpu });
+  }
+  const unavailable = Object.values(services).some((service) => ["offline", "degraded"].includes(service.state));
+  const state = edition === "community"
+    ? (Object.values(services).some((service) => service.state !== "online") ? "degraded" : "healthy")
+    : (unavailable ? "degraded" : "healthy");
+  return { version: "0.1.0", edition, startedAt, state, services };
 }
 
 async function persistChat(id, provider, model, prompt, answer) {
@@ -186,9 +247,19 @@ async function imageStatus(input) {
 }
 
 async function serveStatic(pathname, res) {
-  const names = { "/": ["public/index.html", "text/html; charset=utf-8"], "/app.js": ["public/app.js", "text/javascript; charset=utf-8"], "/styles.css": ["public/styles.css", "text/css; charset=utf-8"] };
-  if (!names[pathname]) return false;
-  const [file, type] = names[pathname];
+  const names = {
+    "/": ["public/index.html", "text/html; charset=utf-8"],
+    "/app.js": ["public/app.js", "text/javascript; charset=utf-8"],
+    "/styles.css": ["public/styles.css", "text/css; charset=utf-8"],
+    "/command/app.js": ["public/command/app.js", "text/javascript; charset=utf-8"],
+    "/command/styles.css": ["public/command/styles.css", "text/css; charset=utf-8"]
+  };
+  let descriptor = names[pathname];
+  if (!descriptor && nebulaEdition() === "command" && COMMAND_PAGE_ROUTES.has(pathname)) {
+    descriptor = ["public/command/index.html", "text/html; charset=utf-8"];
+  }
+  if (!descriptor || (pathname.startsWith("/command/") && nebulaEdition() !== "command")) return false;
+  const [file, type] = descriptor;
   const data = await readFile(join(ROOT, file));
   send(res, 200, data, { "content-type": type, "cache-control": "no-cache" });
   return true;
@@ -204,14 +275,71 @@ export function createServer() {
         if (req.headers.origin !== expected) return send(res, 403, { error: "origin_forbidden", message: "Cross-origin API requests are not permitted." });
       }
       if (req.method === "GET" && await serveStatic(url.pathname, res)) return;
+      const privateApi = url.pathname.startsWith("/api/command/") || url.pathname.startsWith("/api/jarvis/") || url.pathname === "/api/research";
+      if (privateApi && nebulaEdition() !== "command") {
+        const error = jsonError("not_found", "Route not found", 404);
+        return send(res, error.status, error.body);
+      }
+      if (privateApi && !command.authorize(req)) return send(res, 401, { error: "command_unauthorized", message: "Private Command access requires the configured local access token." });
       if (req.method === "GET" && url.pathname === "/api/health") return send(res, 200, { status: "ok", version: "0.1.0" });
       if (req.method === "POST" && url.pathname === "/api/status") return send(res, 200, await status());
       if (req.method === "POST" && url.pathname === "/api/chat") return send(res, 200, await chat(await body(req)));
       if (req.method === "POST" && url.pathname === "/api/images") return send(res, 202, await image(await body(req)));
       if (req.method === "POST" && url.pathname === "/api/images/status") return send(res, 200, await imageStatus(await body(req)));
+      if (req.method === "GET" && url.pathname === "/api/command/status") return send(res, 200, await command.status());
+      if (req.method === "GET" && url.pathname === "/api/command/projects") return send(res, 200, { projects: await command.listProjects() });
+      if (req.method === "POST" && url.pathname === "/api/command/projects") return send(res, 201, await command.createProject(await body(req)));
+      if (req.method === "GET" && url.pathname === "/api/command/audit") return send(res, 200, { events: await command.auditEvents(url.searchParams.get("limit")) });
+      const memoriesMatch = url.pathname.match(/^\/api\/command\/projects\/([^/]+)\/memories$/);
+      if (memoriesMatch && req.method === "GET") {
+        return send(res, 200, await command.searchMemories(decodeURIComponent(memoriesMatch[1]), url.searchParams.get("q")));
+      }
+      if (memoriesMatch && req.method === "POST") {
+        return send(res, 201, await command.saveMemory(decodeURIComponent(memoriesMatch[1]), await body(req)));
+      }
+      const memoryRebuildMatch = url.pathname.match(/^\/api\/command\/projects\/([^/]+)\/memories\/rebuild$/);
+      if (memoryRebuildMatch && req.method === "POST") {
+        return send(res, 200, await command.rebuildMemoryEmbeddings(decodeURIComponent(memoryRebuildMatch[1]), await body(req)));
+      }
+      const filesMatch = url.pathname.match(/^\/api\/command\/projects\/([^/]+)\/files$/);
+      if (filesMatch && req.method === "GET") {
+        const slug = decodeURIComponent(filesMatch[1]);
+        const requested = url.searchParams.get("path") || "";
+        if (!requested) return send(res, 200, { files: await command.listFiles(slug) });
+        return send(res, 200, await command.readWorkspaceFile(slug, requested));
+      }
+      if (filesMatch && req.method === "POST") {
+        const input = await body(req);
+        return send(res, 200, await command.writeWorkspaceFile(decodeURIComponent(filesMatch[1]), input.path, input.content, input.confirm));
+      }
+      const runMatch = url.pathname.match(/^\/api\/command\/projects\/([^/]+)\/run$/);
+      if (runMatch && req.method === "POST") return send(res, 200, await command.runWorkspaceCommand(decodeURIComponent(runMatch[1]), await body(req)));
+      const planMatch = url.pathname.match(/^\/api\/command\/projects\/([^/]+)\/tasks\/plan$/);
+      if (planMatch && req.method === "POST") {
+        return send(res, 200, await command.planWorkspaceTask(decodeURIComponent(planMatch[1]), await body(req)));
+      }
+      const taskMatch = url.pathname.match(/^\/api\/command\/projects\/([^/]+)\/tasks$/);
+      if (taskMatch && req.method === "POST") {
+        return send(res, 202, await command.startWorkspaceTask(decodeURIComponent(taskMatch[1]), await body(req)));
+      }
+      const taskStatusMatch = url.pathname.match(/^\/api\/command\/tasks\/([^/]+)$/);
+      if (taskStatusMatch && req.method === "GET") {
+        return send(res, 200, await command.getWorkspaceTask(decodeURIComponent(taskStatusMatch[1])));
+      }
+      const taskApprovalMatch = url.pathname.match(/^\/api\/command\/tasks\/([^/]+)\/approve$/);
+      if (taskApprovalMatch && req.method === "POST") {
+        const input = await body(req);
+        return send(res, 200, await command.approveWorkspaceTask(decodeURIComponent(taskApprovalMatch[1]), input.approved !== false));
+      }
+      const taskCancelMatch = url.pathname.match(/^\/api\/command\/tasks\/([^/]+)\/cancel$/);
+      if (taskCancelMatch && req.method === "POST") {
+        return send(res, 200, await command.cancelWorkspaceTask(decodeURIComponent(taskCancelMatch[1])));
+      }
+      if (req.method === "POST" && url.pathname === "/api/jarvis/chat") return send(res, 200, await command.jarvisChat(await body(req)));
+      if (req.method === "GET" && url.pathname === "/api/research") return send(res, 200, await command.research(url.searchParams.get("q"), url.searchParams.get("project")));
       if (req.method === "POST" && url.pathname === "/api/diagnostics") {
         await body(req);
-        const report = { generatedAt: new Date().toISOString(), runtime: { node: process.version, platform: process.platform, arch: process.arch }, health: await status(), configuration: { database: Boolean(process.env.DATABASE_URL), redis: Boolean(process.env.REDIS_URL), ollama: Boolean(process.env.OLLAMA_URL), openaiCompatible: Boolean(process.env.OPENAI_COMPATIBLE_URL), comfyui: Boolean(process.env.COMFYUI_URL) }, note: "Prompts, conversations, cookies, headers, logs, endpoint URLs, and raw settings are intentionally excluded." };
+        const report = { generatedAt: new Date().toISOString(), runtime: { node: process.version, platform: process.platform, arch: process.arch }, health: await status(), configuration: { database: Boolean(process.env.DATABASE_URL), redis: Boolean(process.env.REDIS_URL), ollama: Boolean(process.env.OLLAMA_URL), openaiCompatible: Boolean(process.env.OPENAI_COMPATIBLE_URL), comfyui: Boolean(process.env.COMFYUI_URL), searxng: Boolean(process.env.SEARXNG_URL), embed: Boolean(process.env.EMBED_MODEL), gpu: Boolean(process.env.GPU_STATUS_URL) }, note: "Prompts, conversations, cookies, headers, logs, endpoint URLs, and raw settings are intentionally excluded." };
         const archive = diagnosticArchive(report, configuredHosts());
         return send(res, 200, archive, { "content-type": "application/gzip", "content-disposition": `attachment; filename="nebula-diagnostics-${Date.now()}.json.gz"` });
       }
@@ -222,6 +350,30 @@ export function createServer() {
       logError(`${req.method} ${url.pathname}`, error);
       const result = error.code === "endpoint_override_forbidden"
         ? jsonError("endpoint_override_forbidden", "Endpoint selection is managed by server configuration.", 400)
+        : error.code === "command_unauthorized"
+        ? jsonError("command_unauthorized", "Private Command access is not authorized.", 401)
+        : error.code === "approval_required"
+        ? jsonError("approval_required", error.message, 409)
+        : error.code === "command_not_allowed"
+        ? jsonError("command_not_allowed", error.message, 400)
+        : error.code === "local_model_unavailable"
+        ? jsonError("local_model_unavailable", error.message, 503)
+        : error.code === "local_model_failed"
+        ? jsonError("local_model_failed", error.message, 503)
+        : error.code === "memory_backend_invalid"
+        ? jsonError("memory_backend_invalid", error.message, 503)
+        : error.code === "memory_embedding_unavailable"
+        ? jsonError("memory_embedding_unavailable", error.message, 503)
+        : error.code === "memory_storage_unavailable"
+        ? jsonError("memory_storage_unavailable", error.message, 503)
+        : error.code === "project_not_found"
+        ? jsonError("project_not_found", error.message, 404)
+        : error.code === "task_not_found"
+        ? jsonError("task_not_found", error.message, 404)
+        : error.code === "task_not_actionable" || /not waiting for approval|declined|cancelled|reaching its time limit|output exceeded/i.test(error.message)
+        ? jsonError("task_not_actionable", error.message, 409)
+        : error.code === "research_disabled"
+        ? jsonError("research_disabled", error.message, 503)
         : offline
         ? jsonError("service_unavailable", "Configured service is unavailable. Check Status and endpoint settings.", 503)
         : jsonError("request_failed", "Unable to complete the request. Review your settings and try again.", 400);
@@ -231,5 +383,6 @@ export function createServer() {
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  await command.recoverWorkspaceTasks();
   createServer().listen(PORT, HOST, () => console.log(`Nebula Command Community listening on ${HOST}:${PORT}`));
 }

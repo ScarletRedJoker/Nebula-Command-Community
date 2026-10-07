@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Private, local-first Nebula Command cockpit.">
+  <title>Nebula Command · Private</title>
+  <link rel="stylesheet" href="/command/styles.css">
+</head>
+<body>
+  <div class="layout">
+    <button id="nav-toggle" aria-expanded="false" aria-controls="sidebar" aria-label="Toggle navigation">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+    </button>
+    <div id="sidebar-overlay"></div>
+    <aside id="sidebar">
+      <header class="sidebar-header">
+        <div>
+          <span class="eyebrow">PRIVATE COMMAND</span>
+          <h1>Nebula</h1>
+          <span class="eyebrow">LOCAL ONLY</span>
+        </div>
+        <div id="overall" class="badge">Checking systems…</div>
+      </header>
+      <nav aria-label="Private Command">
+        <a href="/command/overview" data-page="overview" class="active">Overview</a>
+        <a href="/command/jarvis" data-page="jarvis">Jarvis</a>
+        <a href="/command/studio" data-page="studio">Studio</a>
+        <a href="/command/knowledge" data-page="knowledge">Knowledge</a>
+        <a href="/command/research" data-page="research">Research</a>
+        <a href="/command/images" data-page="images">Images</a>
+        <a href="/command/jobs" data-page="jobs">Jobs &amp; Audit</a>
+        <a href="/command/settings" data-page="settings">Settings</a>
+      </nav>
+    </aside>
+    <main>
+      <section class="access">
+        <label for="token">Command access token <span>(only required when configured)</span></label>
+        <div class="inline">
+          <input id="token" type="password" autocomplete="off" placeholder="Stored for this browser session">
+          <button id="save-token">Save session token</button>
+        </div>
+      </section>
+
+      <section id="overview" class="page active">
+        <div class="heading">
+          <div>
+            <p class="kicker">LOCAL CONTROL PLANE</p>
+            <h2>System Readiness</h2>
+          </div>
+          <button id="refresh">Refresh</button>
+        </div>
+        <div id="services" class="grid"></div>
+        <article class="callout">
+          <strong>Resource policy</strong>
+          <p>Jarvis defaults to the server-selected local model. Creative GPU services remain host-owned and should be started through the host controller, not from this browser.</p>
+        </article>
+      </section>
+
+      <section id="jarvis" class="page">
+        <div class="heading">
+          <div>
+            <p class="kicker">PRIVATE OPERATOR</p>
+            <h2>Jarvis</h2>
+          </div>
+        </div>
+        <label for="jarvis-project">Project memory scope <span>(optional)</span></label>
+        <select id="jarvis-project"><option value="">No project selected</option></select>
+        <div class="split">
+          <article class="chat-panel">
+            <div id="messages" class="messages">
+              <p class="empty">Ask Jarvis to inspect the local platform or help plan a task.</p>
+            </div>
+            <form id="jarvis-form" class="chat-form">
+              <label for="message" class="sr-only">Message</label>
+              <textarea id="message" maxlength="12000" required placeholder="Ask your local operator…"></textarea>
+              <button type="submit">Send to local Jarvis</button>
+            </form>
+          </article>
+          <article class="task-panel">
+            <p class="kicker">BOUNDED CODING LOOP</p>
+            <h3>Plan a local coding task</h3>
+            <p class="fine">Jarvis only uses the configured Ollama endpoint. Reads can run automatically; every file write and allowed command pauses for your approval.</p>
+            <form id="task-form">
+              <label for="task-project">Project</label>
+              <select id="task-project" required><option value="">Load a project first</option></select>
+              <label for="task-goal">Goal</label>
+              <textarea id="task-goal" maxlength="4000" required placeholder="Describe one small coding change…"></textarea>
+              <label for="task-paths">Relevant files <span>(optional, comma separated)</span></label>
+              <input id="task-paths" maxlength="1000" placeholder="src/index.js, README.md">
+              <button type="submit">Ask Jarvis for a plan</button>
+            </form>
+            <div id="task-plan" class="task-result"></div>
+            <div id="task-job" class="task-result"></div>
+          </article>
+        </div>
+      </section>
+
+      <section id="studio" class="page">
+        <div class="heading">
+          <div>
+            <p class="kicker">CONFINED FILES</p>
+            <h2>Studio</h2>
+          </div>
+          <button id="refresh-projects">Refresh</button>
+        </div>
+        <div class="split">
+          <article>
+            <h3>Projects</h3>
+            <form id="project-form">
+              <label for="project-slug">Project ID</label>
+              <input id="project-slug" pattern="[a-z0-9][a-z0-9-]{1,47}" required placeholder="my-project">
+              <label for="project-name">Name</label>
+              <input id="project-name" maxlength="120" placeholder="My project">
+              <button type="submit">Create project</button>
+            </form>
+            <div id="projects" class="list"></div>
+          </article>
+          <article>
+            <h3>Files</h3>
+            <p id="selected-project" class="fine">Select a project to list files.</p>
+            <div id="files" class="list"></div>
+            <pre id="file-content" class="code"></pre>
+          </article>
+        </div>
+      </section>
+
+      <section id="knowledge" class="page">
+        <div class="heading">
+          <div>
+            <p class="kicker">LOCAL EMBEDDINGS</p>
+            <h2>Knowledge</h2>
+          </div>
+        </div>
+        <div class="empty-state">
+          <strong>Not Configured</strong>
+          <p>Knowledge ingestion and chunk search are scheduled for a future slice. The vector store is currently inactive.</p>
+        </div>
+      </section>
+
+      <section id="research" class="page">
+        <div class="heading">
+          <div>
+            <p class="kicker">LOCAL SEARCH</p>
+            <h2>Research</h2>
+          </div>
+        </div>
+        <label for="research-project">Save and search project <span>(required for memory actions)</span></label>
+        <select id="research-project"><option value="">Select a project</option></select>
+        <form id="research-form">
+          <label for="query">Query</label>
+          <div class="inline">
+            <input id="query" maxlength="500" required placeholder="Search through local SearXNG">
+            <button type="submit">Search locally</button>
+          </div>
+        </form>
+        <div id="results" class="results">
+          <p class="empty">SearXNG is optional and stays disabled until configured on the host.</p>
+        </div>
+        <form id="memory-note-form">
+          <label for="memory-kind">Save project memory</label>
+          <select id="memory-kind">
+            <option value="decision">Decision</option>
+            <option value="operator">Operator note</option>
+            <option value="project">Project note</option>
+          </select>
+          <input id="memory-title" maxlength="300" placeholder="Short title">
+          <textarea id="memory-content" maxlength="64000" required placeholder="Record a decision, project fact, or operator note…"></textarea>
+          <button type="submit">Save local memory</button>
+        </form>
+        <form id="memory-form">
+          <label for="memory-query">Search saved project memory</label>
+          <input id="memory-query" maxlength="500" required placeholder="Find saved research, decisions, or notes">
+          <button type="submit">Search project memory</button>
+        </form>
+        <article class="callout">
+          <strong>Rebuild local vector memory</strong>
+          <p>Re-embed up to 100 older memories in the selected project through the configured local Ollama endpoint. This does not use cloud embeddings.</p>
+          <button id="rebuild-memory" type="button">Rebuild missing embeddings</button>
+          <p id="rebuild-memory-result" class="fine"></p>
+        </article>
+        <div id="memory-results" class="results">
+          <p class="empty">Saved memory stays scoped to the selected project.</p>
+        </div>
+      </section>
+
+      <section id="images" class="page">
+        <div class="heading">
+          <div>
+            <p class="kicker">GPU COMPUTE</p>
+            <h2>Images</h2>
+          </div>
+        </div>
+        <div class="empty-state">
+          <strong>Next Milestone</strong>
+          <p>ComfyUI dashboard and GPU admission lock are pending. Use the host controller for generation.</p>
+        </div>
+      </section>
+
+      <section id="jobs" class="page">
+        <div class="heading">
+          <div>
+            <p class="kicker">OPERATOR TRACE</p>
+            <h2>Jobs &amp; Audit</h2>
+          </div>
+          <button id="refresh-audit">Refresh</button>
+        </div>
+        <div id="events" class="events"></div>
+      </section>
+
+      <section id="settings" class="page">
+        <div class="heading">
+          <div>
+            <p class="kicker">CONSOLE CONFIG</p>
+            <h2>Settings</h2>
+          </div>
+        </div>
+        <div class="empty-state">
+          <strong>Pending Configuration</strong>
+          <p>Model maps, approval defaults, and access notes will be exposed in a future slice.</p>
+        </div>
+      </section>
+    </main>
+  </div>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <script type="module" src="/command/app.js"></script>
+</body>
+</html>
